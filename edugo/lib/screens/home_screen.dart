@@ -134,7 +134,7 @@ class _Header extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               const Text(
-                'Lern Abenteuer',
+                'EduGo',
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w900,
