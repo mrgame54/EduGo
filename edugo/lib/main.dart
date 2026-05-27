@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'screens/home_screen.dart';
+import 'screens/splash_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
+  runApp(const EduGoApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class EduGoApp extends StatelessWidget {
+  const EduGoApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -18,9 +26,9 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1CB0F6)),
         textTheme: GoogleFonts.nunitoTextTheme(),
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF0F2F5),
+        scaffoldBackgroundColor: const Color(0xFFFAFBFF),
       ),
-      home: const HomeScreen(),
+      home: const SplashScreen(),
     );
   }
 }
