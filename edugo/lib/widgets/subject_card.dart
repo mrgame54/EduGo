@@ -6,7 +6,13 @@ import '../screens/level_tree_screen.dart';
 class SubjectCard extends StatefulWidget {
   final Subject subject;
   final int index;
-  const SubjectCard({super.key, required this.subject, required this.index});
+  final VoidCallback onRefresh;
+  const SubjectCard({
+    super.key,
+    required this.subject,
+    required this.index,
+    required this.onRefresh,
+  });
 
   @override
   State<SubjectCard> createState() => _SubjectCardState();
@@ -61,7 +67,9 @@ class _SubjectCardState extends State<SubjectCard>
         },
         transitionDuration: const Duration(milliseconds: 350),
       ),
-    );
+    ).then((_) {
+      widget.onRefresh();
+    });
   }
 
   // Completed levels count

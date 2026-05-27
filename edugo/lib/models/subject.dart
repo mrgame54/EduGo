@@ -18,6 +18,45 @@ class Subject {
     required this.emoji,
     required this.levels,
   });
+
+  factory Subject.fromJson(Map<String, dynamic> json) {
+    final colorStr = json['color'] as String? ?? '#1CB0F6';
+    final shadowColorStr = json['shadow_color'] as String? ?? '#1480B3';
+    
+    // Parse hex colors safely
+    final color = Color(int.parse(colorStr.replaceFirst('#', '0xFF')));
+    final shadowColor = Color(int.parse(shadowColorStr.replaceFirst('#', '0xFF')));
+
+    final emoji = json['emoji'] as String? ?? '📝';
+
+    // Map emoji to IconData
+    IconData icon;
+    if (emoji == '📖') {
+      icon = Icons.auto_stories_rounded;
+    } else if (emoji == '🔢') {
+      icon = Icons.calculate_rounded;
+    } else if (emoji == '🌿') {
+      icon = Icons.eco_rounded;
+    } else if (emoji == '🎨') {
+      icon = Icons.palette_rounded;
+    } else {
+      icon = Icons.school_rounded;
+    }
+
+    final levelsList = (json['levels'] as List<dynamic>? ?? [])
+        .map((l) => LevelData.fromJson(l as Map<String, dynamic>))
+        .toList();
+
+    return Subject(
+      name: json['name'] as String? ?? 'Quiz',
+      level: json['level'] as int? ?? 1,
+      color: color,
+      shadowColor: shadowColor,
+      emoji: emoji,
+      icon: icon,
+      levels: levelsList,
+    );
+  }
 }
 
 class LevelData {
@@ -34,71 +73,14 @@ class LevelData {
     this.isCompleted = false,
     this.stars = 0,
   });
-}
 
-final List<Subject> subjects = [
-  Subject(
-    name: 'Sprache',
-    level: 1,
-    color: const Color(0xFF1CB0F6),
-    shadowColor: const Color(0xFF1480B3),
-    icon: Icons.auto_stories_rounded,
-    emoji: '📖',
-    levels: [
-      const LevelData(levelNumber: 1, title: 'Buchstaben A-E', isUnlocked: true, isCompleted: true, stars: 3),
-      const LevelData(levelNumber: 2, title: 'Buchstaben F-J', isUnlocked: true, isCompleted: true, stars: 2),
-      const LevelData(levelNumber: 3, title: 'Buchstaben K-O', isUnlocked: true, isCompleted: false, stars: 0),
-      const LevelData(levelNumber: 4, title: 'Buchstaben P-T', isUnlocked: false, isCompleted: false, stars: 0),
-      const LevelData(levelNumber: 5, title: 'Buchstaben U-Z', isUnlocked: false, isCompleted: false, stars: 0),
-    ],
-  ),
-  Subject(
-    name: 'Mathe',
-    level: 7,
-    color: const Color(0xFFFF4B4B),
-    shadowColor: const Color(0xFFC73A3A),
-    icon: Icons.calculate_rounded,
-    emoji: '🔢',
-    levels: [
-      const LevelData(levelNumber: 1, title: 'Zahlen 1-10', isUnlocked: true, isCompleted: true, stars: 3),
-      const LevelData(levelNumber: 2, title: 'Addition', isUnlocked: true, isCompleted: true, stars: 3),
-      const LevelData(levelNumber: 3, title: 'Subtraktion', isUnlocked: true, isCompleted: true, stars: 2),
-      const LevelData(levelNumber: 4, title: 'Multiplikation', isUnlocked: true, isCompleted: true, stars: 3),
-      const LevelData(levelNumber: 5, title: 'Division', isUnlocked: true, isCompleted: true, stars: 1),
-      const LevelData(levelNumber: 6, title: 'Brüche', isUnlocked: true, isCompleted: true, stars: 2),
-      const LevelData(levelNumber: 7, title: 'Geometrie', isUnlocked: true, isCompleted: false, stars: 0),
-      const LevelData(levelNumber: 8, title: 'Algebra', isUnlocked: false, isCompleted: false, stars: 0),
-    ],
-  ),
-  Subject(
-    name: 'Natur',
-    level: 3,
-    color: const Color(0xFF58CC02),
-    shadowColor: const Color(0xFF46A302),
-    icon: Icons.eco_rounded,
-    emoji: '🌿',
-    levels: [
-      const LevelData(levelNumber: 1, title: 'Pflanzen', isUnlocked: true, isCompleted: true, stars: 3),
-      const LevelData(levelNumber: 2, title: 'Tiere', isUnlocked: true, isCompleted: true, stars: 3),
-      const LevelData(levelNumber: 3, title: 'Wetter', isUnlocked: true, isCompleted: false, stars: 0),
-      const LevelData(levelNumber: 4, title: 'Erde & Weltraum', isUnlocked: false, isCompleted: false, stars: 0),
-      const LevelData(levelNumber: 5, title: 'Ökosysteme', isUnlocked: false, isCompleted: false, stars: 0),
-    ],
-  ),
-  Subject(
-    name: 'Kunst',
-    level: 5,
-    color: const Color(0xFFCE82FF),
-    shadowColor: const Color(0xFFA366CC),
-    icon: Icons.palette_rounded,
-    emoji: '🎨',
-    levels: [
-      const LevelData(levelNumber: 1, title: 'Grundfarben', isUnlocked: true, isCompleted: true, stars: 3),
-      const LevelData(levelNumber: 2, title: 'Formen zeichnen', isUnlocked: true, isCompleted: true, stars: 3),
-      const LevelData(levelNumber: 3, title: 'Muster & Texturen', isUnlocked: true, isCompleted: true, stars: 2),
-      const LevelData(levelNumber: 4, title: 'Landschaften', isUnlocked: true, isCompleted: true, stars: 3),
-      const LevelData(levelNumber: 5, title: 'Porträts', isUnlocked: true, isCompleted: false, stars: 0),
-      const LevelData(levelNumber: 6, title: 'Abstrakte Kunst', isUnlocked: false, isCompleted: false, stars: 0),
-    ],
-  ),
-];
+  factory LevelData.fromJson(Map<String, dynamic> json) {
+    return LevelData(
+      levelNumber: json['level_number'] as int? ?? 1,
+      title: json['title'] as String? ?? 'Level',
+      isUnlocked: json['is_unlocked'] as bool? ?? true,
+      isCompleted: json['is_completed'] as bool? ?? false,
+      stars: json['stars'] as int? ?? 0,
+    );
+  }
+}

@@ -17,27 +17,53 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _teacherQuizzes = [];
   bool _loadingQuizzes = true;
-  String? _quizError;
+
+  List<Subject> _subjects = [];
+  bool _loadingSubjects = true;
 
   @override
   void initState() {
     super.initState();
     _fetchTeacherQuizzes();
+    _fetchSubjects();
+  }
+
+  Future<void> _fetchSubjects() async {
+    try {
+      final subjectsData = await ApiService.fetchSubjects();
+      final List<Subject> parsed = subjectsData.map((s) => Subject.fromJson(s)).toList();
+      if (mounted) {
+        setState(() {
+          _subjects = parsed;
+          _loadingSubjects = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching subjects: $e');
+      if (mounted) {
+        setState(() {
+          _loadingSubjects = false;
+        });
+      }
+    }
   }
 
   Future<void> _fetchTeacherQuizzes() async {
     try {
       final quizzes = await ApiService.fetchQuizzes();
+      // Only display general/global quizzes in the "Lehrer-Quizzes" section.
+      // Quizzes targeted at specific subject levels are played directly inside those levels.
+      final globalQuizzes = quizzes.where((q) => q['level_number'] == null).toList();
       if (mounted) {
         setState(() {
-          _teacherQuizzes = quizzes;
+          _teacherQuizzes = globalQuizzes;
           _loadingQuizzes = false;
         });
       }
     } catch (e) {
+      debugPrint('Error fetching quizzes: $e');
       if (mounted) {
         setState(() {
-          _quizError = e.toString();
           _loadingQuizzes = false;
         });
       }
@@ -122,7 +148,31 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                     const _SectionLabel(label: 'Fächer wählen'),
                     const SizedBox(height: 16),
-                    _SubjectGrid(),
+                    if (_loadingSubjects) ...[
+                      const Center(
+                        child: SizedBox(
+                          width: 24, height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                    ] else if (_subjects.isEmpty) ...[
+                      const Center(
+                        child: Text(
+                          'Keine Fächer geladen.',
+                          style: TextStyle(color: Colors.grey, fontSize: 13),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                    ] else ...[
+                      _SubjectGrid(
+                        subjects: _subjects,
+                        onRefresh: () {
+                          _fetchSubjects();
+                          _fetchTeacherQuizzes();
+                        },
+                      ),
+                    ],
                     const SizedBox(height: 36),
                     _ProgressFooter(),
                     const SizedBox(height: 28),
@@ -402,6 +452,10 @@ class _SectionLabel extends StatelessWidget {
 // ─── SUBJECT GRID ─────────────────────────────────────────────────────────────
 
 class _SubjectGrid extends StatelessWidget {
+  final List<Subject> subjects;
+  final VoidCallback onRefresh;
+  const _SubjectGrid({required this.subjects, required this.onRefresh});
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -414,7 +468,11 @@ class _SubjectGrid extends StatelessWidget {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         children: subjects.asMap().entries.map((e) {
-          return SubjectCard(subject: e.value, index: e.key);
+          return SubjectCard(
+            subject: e.value,
+            index: e.key,
+            onRefresh: onRefresh,
+          );
         }).toList(),
       ),
     );

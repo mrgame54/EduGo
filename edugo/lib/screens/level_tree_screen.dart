@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'dart:math' as math;
 import '../models/subject.dart';
 import 'quiz_screen.dart';
+import '../services/api_service.dart';
+
 
 class LevelTreeScreen extends StatefulWidget {
   final Subject subject;
@@ -16,10 +18,13 @@ class _LevelTreeScreenState extends State<LevelTreeScreen>
     with TickerProviderStateMixin {
   late AnimationController _headerController;
   late AnimationController _treeController;
+  List<Map<String, dynamic>> _quizzes = [];
+  late Subject _currentSubject;
 
   @override
   void initState() {
     super.initState();
+    _currentSubject = widget.subject;
     _headerController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
     _treeController = AnimationController(
@@ -27,6 +32,28 @@ class _LevelTreeScreenState extends State<LevelTreeScreen>
     _headerController.forward();
     Future.delayed(const Duration(milliseconds: 200),
         () => _treeController.forward());
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final quizzesData = await ApiService.fetchQuizzes();
+      final subjectsData = await ApiService.fetchSubjects();
+      final updatedSubject = subjectsData
+          .map((s) => Subject.fromJson(s))
+          .firstWhere(
+            (s) => s.name.toLowerCase() == widget.subject.name.toLowerCase(),
+            orElse: () => _currentSubject,
+          );
+      if (mounted) {
+        setState(() {
+          _quizzes = quizzesData;
+          _currentSubject = updatedSubject;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading tree data: $e');
+    }
   }
 
   @override
@@ -37,9 +64,15 @@ class _LevelTreeScreenState extends State<LevelTreeScreen>
   }
 
   // How many levels are done / total
-  int get _completedCount =>
-      widget.subject.levels.where((l) => l.isCompleted).length;
-  int get _totalCount => widget.subject.levels.length;
+  int get _completedCount {
+    return _currentSubject.levels.where((l) {
+      final hasQuiz = _quizzes.any((q) =>
+          q['subject']?.toString().toLowerCase() == _currentSubject.name.toLowerCase() &&
+          q['level_number'] == l.levelNumber);
+      return hasQuiz && l.isCompleted;
+    }).length;
+  }
+  int get _totalCount => _currentSubject.levels.length;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +82,7 @@ class _LevelTreeScreenState extends State<LevelTreeScreen>
         children: [
           // ─── HEADER ───
           _TreeHeader(
-            subject: widget.subject,
+            subject: _currentSubject,
             controller: _headerController,
             completed: _completedCount,
             total: _totalCount,
@@ -60,8 +93,10 @@ class _LevelTreeScreenState extends State<LevelTreeScreen>
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: _LevelTree(
-                subject: widget.subject,
+                subject: _currentSubject,
                 controller: _treeController,
+                quizzes: _quizzes,
+                onRefresh: _loadData,
               ),
             ),
           ),
@@ -226,8 +261,15 @@ class _TreeHeader extends StatelessWidget {
 class _LevelTree extends StatelessWidget {
   final Subject subject;
   final AnimationController controller;
+  final List<Map<String, dynamic>> quizzes;
+  final VoidCallback onRefresh;
 
-  const _LevelTree({required this.subject, required this.controller});
+  const _LevelTree({
+    required this.subject,
+    required this.controller,
+    required this.quizzes,
+    required this.onRefresh,
+  });
 
   // Zigzag horizontal positions: alternate left/center/right
   static const List<double> _xOffsets = [
@@ -280,12 +322,26 @@ class _LevelTree extends StatelessWidget {
                   ),
                 );
 
+                final levelHasQuiz = quizzes.any(
+                  (q) =>
+                      q['subject']?.toString().toLowerCase() == subject.name.toLowerCase() &&
+                      q['level_number'] == level.levelNumber,
+                );
+                final nextHasQuiz = quizzes.any(
+                  (q) =>
+                      q['subject']?.toString().toLowerCase() == subject.name.toLowerCase() &&
+                      q['level_number'] == next.levelNumber,
+                );
+
+                final levelCompleted = levelHasQuiz && level.isCompleted;
+                final nextUnlocked = nextHasQuiz && next.isUnlocked;
+
                 return Positioned.fill(
                   child: CustomPaint(
                     painter: _ConnectorPainter(
                       x1: x1, y1: y1, x2: x2, y2: y2,
-                      isDone: level.isCompleted && next.isUnlocked,
-                      isUnlocked: next.isUnlocked,
+                      isDone: levelCompleted && nextUnlocked,
+                      isUnlocked: nextUnlocked,
                       progress: lineAnim.value,
                       color: subject.color,
                     ),
@@ -312,6 +368,13 @@ class _LevelTree extends StatelessWidget {
                   ),
                 );
 
+                final matchingQuiz = quizzes.firstWhere(
+                  (q) =>
+                      q['subject']?.toString().toLowerCase() == subject.name.toLowerCase() &&
+                      q['level_number'] == level.levelNumber,
+                  orElse: () => <String, dynamic>{},
+                );
+
                 return Positioned(
                   left: x,
                   top: y,
@@ -323,6 +386,8 @@ class _LevelTree extends StatelessWidget {
                       level: level,
                       subject: subject,
                       nodeSize: nodeSize,
+                      teacherQuiz: matchingQuiz.isEmpty ? null : matchingQuiz,
+                      onRefresh: onRefresh,
                     ),
                   ),
                 );
@@ -416,11 +481,15 @@ class _LevelNode extends StatefulWidget {
   final LevelData level;
   final Subject subject;
   final double nodeSize;
+  final Map<String, dynamic>? teacherQuiz;
+  final VoidCallback onRefresh;
 
   const _LevelNode({
     required this.level,
     required this.subject,
     required this.nodeSize,
+    this.teacherQuiz,
+    required this.onRefresh,
   });
 
   @override
@@ -451,32 +520,37 @@ class _LevelNodeState extends State<_LevelNode>
   }
 
   void _onTap() {
-    if (!widget.level.isUnlocked) return;
+    if (!widget.level.isUnlocked || widget.teacherQuiz == null) return;
     HapticFeedback.lightImpact();
-    final dummyQuestions = [
-      {
-        'question_text': 'Was passt am besten zum Thema ${widget.subject.name}?',
-        'options': ['Option A', 'Option B', 'Option C', 'Option D'],
-        'correct_answer': 'Option B',
-      },
-      {
-        'question_text': 'Wähle die richtige Antwort für Level ${widget.level.levelNumber}.',
-        'options': ['Falsch', 'Auch Falsch', 'Richtig', 'Ganz Falsch'],
-        'correct_answer': 'Richtig',
-      },
-      {
-        'question_text': 'Letzte Frage! Bist du bereit?',
-        'options': ['Nein', 'Vielleicht', 'Ja, absolut!', 'Weiß nicht'],
-        'correct_answer': 'Ja, absolut!',
-      },
-    ];
+
+    List<Map<String, dynamic>> questions;
+    int? quizId;
+    String quizTitle = '${widget.subject.name} - ${widget.level.title}';
+
+    if (widget.teacherQuiz != null) {
+      quizId = widget.teacherQuiz!['id'] as int;
+      quizTitle = widget.teacherQuiz!['title'] ?? quizTitle;
+      final tasks = widget.teacherQuiz!['tasks'] as List<dynamic>;
+      questions = tasks.map<Map<String, dynamic>>((t) {
+        final task = t as Map<String, dynamic>;
+        return {
+          'question_text': task['question_text'] ?? '',
+          'options': List<String>.from(task['options'] ?? []),
+          'correct_answer': task['correct_answer'] ?? '',
+        };
+      }).toList();
+    } else {
+      return;
+    }
+
     Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder: (_, __, ___) =>
             QuizScreen(
-              quizTitle: '${widget.subject.name} - ${widget.level.title}',
-              questions: dummyQuestions,
+              quizId: quizId,
+              quizTitle: quizTitle,
+              questions: questions,
               subjectColor: widget.subject.color,
               subjectShadowColor: widget.subject.shadowColor,
               subjectEmoji: widget.subject.emoji,
@@ -491,14 +565,17 @@ class _LevelNodeState extends State<_LevelNode>
           );
         },
       ),
-    );
+    ).then((_) {
+      widget.onRefresh();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final isActive = widget.level.isUnlocked && !widget.level.isCompleted;
-    final isCompleted = widget.level.isCompleted;
-    final isLocked = !widget.level.isUnlocked;
+    final hasQuiz = widget.teacherQuiz != null;
+    final isLocked = !hasQuiz || !widget.level.isUnlocked;
+    final isCompleted = hasQuiz && widget.level.isCompleted && !isLocked;
+    final isActive = hasQuiz && widget.level.isUnlocked && !isCompleted && !isLocked;
 
     final color = widget.subject.color;
     final shadowColor = widget.subject.shadowColor;

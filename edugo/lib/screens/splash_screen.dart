@@ -17,7 +17,6 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _exitController;
 
   late Animation<double> _logoScale;
-  late Animation<double> _logoBounce;
   late Animation<double> _textFade;
   late Animation<double> _textSlide;
   late Animation<double> _taglineFade;
@@ -47,9 +46,6 @@ class _SplashScreenState extends State<SplashScreen>
 
     _logoScale = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _logoController, curve: Curves.elasticOut),
-    );
-    _logoBounce = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _logoController, curve: Curves.bounceOut),
     );
     _textFade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _textController, curve: Curves.easeOut),

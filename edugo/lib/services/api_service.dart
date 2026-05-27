@@ -25,6 +25,19 @@ class ApiService {
     }
   }
 
+  /// Fetch all subjects and level trees from the teacher backend.
+  static Future<List<Map<String, dynamic>>> fetchSubjects() async {
+    final url = Uri.parse('$baseUrl/subjects');
+    final response = await http.get(url, headers: {'Accept': 'application/json'});
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to fetch subjects: ${response.statusCode}');
+    }
+  }
+
   /// Submit quiz results back to the backend for grading.
   /// Returns the graded result (score, correct count, etc).
   static Future<Map<String, dynamic>> submitResult({
