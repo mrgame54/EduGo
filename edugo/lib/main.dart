@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
@@ -24,7 +23,6 @@ class EduGoApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1CB0F6)),
-        textTheme: GoogleFonts.nunitoTextTheme(),
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFFAFBFF),
       ),

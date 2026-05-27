@@ -138,11 +138,35 @@ class _LevelTile extends StatelessWidget {
         onTap: level.isUnlocked
             ? () {
                 HapticFeedback.lightImpact();
+                // Build dummy questions for offline subjects
+                final dummyQuestions = [
+                  {
+                    'question_text': 'Was passt am besten zum Thema ${subject.name}?',
+                    'options': ['Option A', 'Option B', 'Option C', 'Option D'],
+                    'correct_answer': 'Option B',
+                  },
+                  {
+                    'question_text': 'Wähle die richtige Antwort für Level ${level.levelNumber}.',
+                    'options': ['Falsch', 'Auch Falsch', 'Richtig', 'Ganz Falsch'],
+                    'correct_answer': 'Richtig',
+                  },
+                  {
+                    'question_text': 'Letzte Frage! Bist du bereit?',
+                    'options': ['Nein', 'Vielleicht', 'Ja, absolut!', 'Weiß nicht'],
+                    'correct_answer': 'Ja, absolut!',
+                  },
+                ];
                 Navigator.push(
                   context,
                   PageRouteBuilder(
                     pageBuilder: (context, animation, secondaryAnimation) =>
-                        QuizScreen(subject: subject, level: level),
+                        QuizScreen(
+                          quizTitle: '${subject.name} - ${level.title}',
+                          questions: dummyQuestions,
+                          subjectColor: subject.color,
+                          subjectShadowColor: subject.shadowColor,
+                          subjectEmoji: subject.emoji,
+                        ),
                     transitionsBuilder:
                         (context, animation, secondaryAnimation, child) {
                       return SlideTransition(

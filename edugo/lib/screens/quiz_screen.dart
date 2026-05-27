@@ -1,12 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../models/subject.dart';
+import '../services/api_service.dart';
 
 class QuizScreen extends StatefulWidget {
-  final Subject subject;
-  final LevelData level;
+  final int? quizId;          // null = offline/dummy mode
+  final String quizTitle;
+  final List<Map<String, dynamic>> questions;
+  final Color subjectColor;
+  final Color subjectShadowColor;
+  final String subjectEmoji;
 
-  const QuizScreen({super.key, required this.subject, required this.level});
+  const QuizScreen({
+    super.key,
+    this.quizId,
+    required this.quizTitle,
+    required this.questions,
+    required this.subjectColor,
+    required this.subjectShadowColor,
+    required this.subjectEmoji,
+  });
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -17,35 +29,22 @@ class _QuizScreenState extends State<QuizScreen> {
   int? _selectedIndex;
   bool _isChecked = false;
   bool _isFinished = false;
+  int _correctCount = 0;
+  final List<Map<String, dynamic>> _answerLog = [];
 
-  // Platzhalter-Daten: In einer echten App würden diese aus einer Datenbank kommen
-  late final List<_QuizQuestion> _questions;
+  String get _currentQuestion =>
+      widget.questions[_currentIndex]['question_text'] as String;
 
-  @override
-  void initState() {
-    super.initState();
-    // Generiere ein paar Dummy-Fragen basierend auf dem Fach
-    _questions = [
-      _QuizQuestion(
-        question: 'Was passt am besten zum Thema ${widget.subject.name}?',
-        options: ['Option A', 'Option B', 'Option C', 'Option D'],
-        correctIndex: 1,
-      ),
-      _QuizQuestion(
-        question: 'Wähle die richtige Antwort für Level ${widget.level.levelNumber}.',
-        options: ['Falsch', 'Auch Falsch', 'Richtig', 'Ganz Falsch'],
-        correctIndex: 2,
-      ),
-      _QuizQuestion(
-        question: 'Letzte Frage! Bist du bereit?',
-        options: ['Nein', 'Vielleicht', 'Ja, absolut!', 'Weiß nicht'],
-        correctIndex: 2,
-      ),
-    ];
-  }
+  List<String> get _currentOptions =>
+      List<String>.from(widget.questions[_currentIndex]['options'] ?? []);
+
+  String get _correctAnswer =>
+      widget.questions[_currentIndex]['correct_answer'] as String;
+
+  int get _correctOptionIndex => _currentOptions.indexOf(_correctAnswer);
 
   void _onOptionSelected(int index) {
-    if (_isChecked) return; // Nach Überprüfung sperren
+    if (_isChecked) return;
     HapticFeedback.selectionClick();
     setState(() {
       _selectedIndex = index;
@@ -54,38 +53,61 @@ class _QuizScreenState extends State<QuizScreen> {
 
   void _onCheckOrContinue() {
     if (_isFinished) {
-      Navigator.pop(context); // Zurück zur Level-Übersicht
+      Navigator.pop(context);
       return;
     }
 
     if (!_isChecked) {
-      // Überprüfen-Logik
       if (_selectedIndex != null) {
         HapticFeedback.mediumImpact();
+        final isCorrect = _selectedIndex == _correctOptionIndex;
+        if (isCorrect) _correctCount++;
+
+        // Log this answer
+        _answerLog.add({
+          'question_index': _currentIndex,
+          'selected_answer': _currentOptions[_selectedIndex!],
+        });
+
         setState(() {
           _isChecked = true;
         });
       }
     } else {
-      // Weiter-Logik
       setState(() {
         _isChecked = false;
         _selectedIndex = null;
-        if (_currentIndex < _questions.length - 1) {
+        if (_currentIndex < widget.questions.length - 1) {
           _currentIndex++;
         } else {
           _isFinished = true;
-          HapticFeedback.heavyImpact(); // Erfolg!
+          HapticFeedback.heavyImpact();
+          _submitResults();
         }
       });
     }
   }
 
+  Future<void> _submitResults() async {
+    if (widget.quizId == null) return; // offline mode, skip
+
+    try {
+      await ApiService.submitResult(
+        quizId: widget.quizId!,
+        studentName: 'Lernstar', // TODO: replace with real student name
+        answers: _answerLog,
+      );
+    } catch (e) {
+      // Silently fail for now — the student still sees their local score
+      debugPrint('Failed to submit results: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final double progress = _isFinished 
-        ? 1.0 
-        : _currentIndex / _questions.length;
+    final double progress = _isFinished
+        ? 1.0
+        : _currentIndex / widget.questions.length;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -106,7 +128,7 @@ class _QuizScreenState extends State<QuizScreen> {
                   Expanded(
                     child: _AnimatedProgressBar(
                       progress: progress,
-                      color: widget.subject.color,
+                      color: widget.subjectColor,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -141,10 +163,10 @@ class _QuizScreenState extends State<QuizScreen> {
               isChecked: _isChecked,
               isFinished: _isFinished,
               isCorrect: _isChecked &&
-                  _selectedIndex == _questions[_currentIndex].correctIndex,
+                  _selectedIndex == _correctOptionIndex,
               hasSelection: _selectedIndex != null,
-              subjectColor: widget.subject.color,
-              subjectShadowColor: widget.subject.shadowColor,
+              subjectColor: widget.subjectColor,
+              subjectShadowColor: widget.subjectShadowColor,
               onTap: _onCheckOrContinue,
             ),
           ],
@@ -154,8 +176,6 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Widget _buildQuestionScreen() {
-    final currentQ = _questions[_currentIndex];
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -163,7 +183,7 @@ class _QuizScreenState extends State<QuizScreen> {
         children: [
           const SizedBox(height: 20),
           Text(
-            currentQ.question,
+            _currentQuestion,
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w800,
@@ -175,12 +195,11 @@ class _QuizScreenState extends State<QuizScreen> {
           Expanded(
             child: ListView.builder(
               physics: const BouncingScrollPhysics(),
-              itemCount: currentQ.options.length,
+              itemCount: _currentOptions.length,
               itemBuilder: (context, index) {
                 final isSelected = _selectedIndex == index;
-                final isCorrectAns = currentQ.correctIndex == index;
+                final isCorrectAns = _correctOptionIndex == index;
 
-                // Status für Farben bestimmen
                 _OptionStatus status = _OptionStatus.normal;
                 if (_isChecked) {
                   if (isSelected && isCorrectAns) {
@@ -188,7 +207,7 @@ class _QuizScreenState extends State<QuizScreen> {
                   } else if (isSelected && !isCorrectAns) {
                     status = _OptionStatus.incorrect;
                   } else if (isCorrectAns) {
-                    status = _OptionStatus.missedCorrect; // Zeigt die richtige Antwort an
+                    status = _OptionStatus.missedCorrect;
                   } else {
                     status = _OptionStatus.disabled;
                   }
@@ -197,9 +216,9 @@ class _QuizScreenState extends State<QuizScreen> {
                 }
 
                 return _QuizOptionCard(
-                  text: currentQ.options[index],
+                  text: _currentOptions[index],
                   status: status,
-                  subjectColor: widget.subject.color,
+                  subjectColor: widget.subjectColor,
                   onTap: () => _onOptionSelected(index),
                 );
               },
@@ -211,12 +230,16 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Widget _buildSuccessScreen() {
+    final score = widget.questions.isEmpty
+        ? 0
+        : (_correctCount / widget.questions.length * 100).round();
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            widget.subject.emoji,
+            widget.subjectEmoji,
             style: const TextStyle(fontSize: 80),
           ),
           const SizedBox(height: 20),
@@ -230,32 +253,40 @@ class _QuizScreenState extends State<QuizScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            '+10 XP verdient',
-            style: TextStyle(
+            '$_correctCount / ${widget.questions.length} richtig ($score%)',
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: const Color(0xFFFF9600),
+              color: Color(0xFF58CC02),
             ),
           ),
+          const SizedBox(height: 6),
+          Text(
+            '+${_correctCount * 10} XP verdient',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFFFF9600),
+            ),
+          ),
+          if (widget.quizId != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Ergebnis an Lehrer gesendet ✅',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[400],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-// ─── HILFSKLASSEN & WIDGETS ───
-
-class _QuizQuestion {
-  final String question;
-  final List<String> options;
-  final int correctIndex;
-
-  _QuizQuestion({
-    required this.question,
-    required this.options,
-    required this.correctIndex,
-  });
-}
+// ─── HELPER CLASSES & WIDGETS ───
 
 enum _OptionStatus { normal, selected, correct, incorrect, missedCorrect, disabled }
 
@@ -281,31 +312,25 @@ class _QuizOptionCard extends StatelessWidget {
     switch (status) {
       case _OptionStatus.selected:
         borderColor = subjectColor;
-        bgColor = subjectColor.withOpacity(0.1);
+        bgColor = subjectColor.withValues(alpha: 0.1);
         textColor = subjectColor;
-        break;
       case _OptionStatus.correct:
       case _OptionStatus.missedCorrect:
         borderColor = const Color(0xFF58CC02);
-        bgColor = const Color(0xFF58CC02).withOpacity(0.15);
+        bgColor = const Color(0xFF58CC02).withValues(alpha: 0.15);
         textColor = const Color(0xFF58CC02);
-        break;
       case _OptionStatus.incorrect:
         borderColor = const Color(0xFFFF4B4B);
-        bgColor = const Color(0xFFFF4B4B).withOpacity(0.15);
+        bgColor = const Color(0xFFFF4B4B).withValues(alpha: 0.15);
         textColor = const Color(0xFFFF4B4B);
-        break;
       case _OptionStatus.disabled:
         borderColor = const Color(0xFFEEEEEE);
         bgColor = Colors.white;
         textColor = const Color(0xFFAFAFAF);
-        break;
       case _OptionStatus.normal:
-      default:
         borderColor = const Color(0xFFE5E5E5);
         bgColor = Colors.white;
         textColor = const Color(0xFF4B4B4B);
-        break;
     }
 
     return GestureDetector(
@@ -318,12 +343,11 @@ class _QuizOptionCard extends StatelessWidget {
           color: bgColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: borderColor, width: 2),
-          // Leichter 3D Schatten für nicht ausgewählte Buttons
           boxShadow: status == _OptionStatus.normal
               ? [
-                  BoxShadow(
-                    color: const Color(0xFFE5E5E5),
-                    offset: const Offset(0, 3),
+                  const BoxShadow(
+                    color: Color(0xFFE5E5E5),
+                    offset: Offset(0, 3),
                     blurRadius: 0,
                   ),
                 ]
@@ -372,12 +396,11 @@ class _AnimatedProgressBar extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    // Lichtreflexion (Glossy Effekt)
                     Container(
                       margin: const EdgeInsets.only(top: 3, left: 10, right: 10),
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
+                        color: Colors.white.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),

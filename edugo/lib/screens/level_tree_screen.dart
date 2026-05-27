@@ -453,11 +453,34 @@ class _LevelNodeState extends State<_LevelNode>
   void _onTap() {
     if (!widget.level.isUnlocked) return;
     HapticFeedback.lightImpact();
+    final dummyQuestions = [
+      {
+        'question_text': 'Was passt am besten zum Thema ${widget.subject.name}?',
+        'options': ['Option A', 'Option B', 'Option C', 'Option D'],
+        'correct_answer': 'Option B',
+      },
+      {
+        'question_text': 'Wähle die richtige Antwort für Level ${widget.level.levelNumber}.',
+        'options': ['Falsch', 'Auch Falsch', 'Richtig', 'Ganz Falsch'],
+        'correct_answer': 'Richtig',
+      },
+      {
+        'question_text': 'Letzte Frage! Bist du bereit?',
+        'options': ['Nein', 'Vielleicht', 'Ja, absolut!', 'Weiß nicht'],
+        'correct_answer': 'Ja, absolut!',
+      },
+    ];
     Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder: (_, __, ___) =>
-            QuizScreen(subject: widget.subject, level: widget.level),
+            QuizScreen(
+              quizTitle: '${widget.subject.name} - ${widget.level.title}',
+              questions: dummyQuestions,
+              subjectColor: widget.subject.color,
+              subjectShadowColor: widget.subject.shadowColor,
+              subjectEmoji: widget.subject.emoji,
+            ),
         transitionsBuilder: (_, animation, __, child) {
           return SlideTransition(
             position: Tween<Offset>(

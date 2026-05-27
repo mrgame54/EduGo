@@ -1,11 +1,85 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/subject.dart';
 import '../widgets/subject_card.dart';
 import '../widgets/streak_flame.dart';
 import '../widgets/robot_avatar.dart';
+import '../services/api_service.dart';
+import 'quiz_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  List<Map<String, dynamic>> _teacherQuizzes = [];
+  bool _loadingQuizzes = true;
+  String? _quizError;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTeacherQuizzes();
+  }
+
+  Future<void> _fetchTeacherQuizzes() async {
+    try {
+      final quizzes = await ApiService.fetchQuizzes();
+      if (mounted) {
+        setState(() {
+          _teacherQuizzes = quizzes;
+          _loadingQuizzes = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _quizError = e.toString();
+          _loadingQuizzes = false;
+        });
+      }
+    }
+  }
+
+  void _openTeacherQuiz(Map<String, dynamic> quiz) {
+    HapticFeedback.lightImpact();
+    final tasks = quiz['tasks'] as List<dynamic>;
+    // Build quiz questions from backend data
+    final questions = tasks.map<Map<String, dynamic>>((t) {
+      final task = t as Map<String, dynamic>;
+      return {
+        'question_text': task['question_text'] ?? '',
+        'options': List<String>.from(task['options'] ?? []),
+        'correct_answer': task['correct_answer'] ?? '',
+      };
+    }).toList();
+
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => QuizScreen(
+          quizId: quiz['id'] as int,
+          quizTitle: quiz['title'] ?? 'Quiz',
+          questions: questions,
+          subjectColor: const Color(0xFF1CB0F6),
+          subjectShadowColor: const Color(0xFF1480B3),
+          subjectEmoji: '📝',
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 1.0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+            child: child,
+          );
+        },
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +99,28 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     _DailyStreakBanner(),
                     const SizedBox(height: 28),
-                    _SectionLabel(label: 'Fächer wählen'),
+                    // ─── TEACHER QUIZZES ───
+                    if (!_loadingQuizzes && _teacherQuizzes.isNotEmpty) ...[
+                      const _SectionLabel(label: 'Lehrer-Quizzes 📝'),
+                      const SizedBox(height: 12),
+                      _TeacherQuizList(
+                        quizzes: _teacherQuizzes,
+                        onQuizTap: _openTeacherQuiz,
+                      ),
+                      const SizedBox(height: 28),
+                    ],
+                    if (_loadingQuizzes) ...[
+                      const _SectionLabel(label: 'Lehrer-Quizzes 📝'),
+                      const SizedBox(height: 16),
+                      const Center(
+                        child: SizedBox(
+                          width: 24, height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                    ],
+                    const _SectionLabel(label: 'Fächer wählen'),
                     const SizedBox(height: 16),
                     _SubjectGrid(),
                     const SizedBox(height: 36),
@@ -135,30 +230,32 @@ class _GreetingSection extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Hallo, Lernstar! 🌟',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF2C2C2C),
-                    height: 1.1,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Hallo, Lernstar! 🌟',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF2C2C2C),
+                      height: 1.1,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Was lernst du heute?',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[400],
+                  const SizedBox(height: 4),
+                  Text(
+                    'Was lernst du heute?',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[400],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const Spacer(),
+            const SizedBox(width: 12),
             // XP badge
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -377,3 +474,132 @@ class _ProgressFooter extends StatelessWidget {
     );
   }
 }
+
+// ─── TEACHER QUIZ LIST ────────────────────────────────────────────────────────
+
+class _TeacherQuizList extends StatelessWidget {
+  final List<Map<String, dynamic>> quizzes;
+  final void Function(Map<String, dynamic>) onQuizTap;
+
+  const _TeacherQuizList({required this.quizzes, required this.onQuizTap});
+
+  static const _quizColors = [
+    Color(0xFF1CB0F6),
+    Color(0xFFFF4B4B),
+    Color(0xFF58CC02),
+    Color(0xFFCE82FF),
+    Color(0xFFFF9600),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: Column(
+        children: quizzes.asMap().entries.map((entry) {
+          final index = entry.key;
+          final quiz = entry.value;
+          final color = _quizColors[index % _quizColors.length];
+          final taskCount = (quiz['tasks'] as List<dynamic>?)?.length ?? 0;
+          final subject = quiz['subject'] ?? '';
+          final grade = quiz['grade'] ?? '';
+
+          return TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: 1),
+            duration: Duration(milliseconds: 400 + index * 80),
+            curve: Curves.easeOutCubic,
+            builder: (context, v, child) => Opacity(
+              opacity: v,
+              child: Transform.translate(
+                offset: Offset(0, 20 * (1 - v)),
+                child: child,
+              ),
+            ),
+            child: GestureDetector(
+              onTap: () => onQuizTap(quiz),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: color.withValues(alpha: 0.25), width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    // Icon circle
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text('📝', style: TextStyle(fontSize: 22)),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    // Quiz info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            quiz['title'] ?? 'Quiz',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF2C2C2C),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '$subject · $grade · $taskCount Fragen',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Play button
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: color.withValues(alpha: 0.5),
+                            offset: const Offset(0, 3),
+                            blurRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.play_arrow_rounded,
+                          color: Colors.white, size: 22),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
