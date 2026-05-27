@@ -46,3 +46,10 @@ app.*.map.json
 
 # Flutter tooling metadata (should not be committed)
 .metadata
+
+# Xcode user/workspace files (machine-specific)
+**/xcuserdata/
+**/*.xcuserstate
+**/xcshareddata/IDEWorkspaceChecks.plist
+**/project.xcworkspace/contents.xcworkspacedata
+**/xcshareddata/WorkspaceSettings.xcsettings
