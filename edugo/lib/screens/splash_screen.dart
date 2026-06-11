@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'home_screen.dart';
+import '../services/api_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -70,11 +71,20 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _startSequence() async {
+    // Start backend resolution in parallel
+    final resolveFuture = ApiService.resolveBaseUrl();
+
     await Future.delayed(const Duration(milliseconds: 200));
     await _logoController.forward();
     await Future.delayed(const Duration(milliseconds: 100));
     await _textController.forward();
-    await Future.delayed(const Duration(milliseconds: 1400));
+    
+    // Ensure both the visual delay (1400ms) and API resolution are completed
+    await Future.wait([
+      Future.delayed(const Duration(milliseconds: 1400)),
+      resolveFuture,
+    ]);
+
     _particleController.stop();
     await _exitController.forward();
     if (mounted) {

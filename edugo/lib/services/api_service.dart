@@ -1,21 +1,179 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  /// Use 10.0.2.2 for Android emulator, localhost for iOS simulator / macOS
+  static String? _resolvedBaseUrl;
+  static String? _authToken;
+  static Map<String, dynamic>? currentUser;
+
   static String get baseUrl {
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8000/api/v1';
+    return _resolvedBaseUrl ?? 'https://ai-pipeline-u7tf.onrender.com/api/v1';
+  }
+
+  static Future<String> resolveBaseUrl() async {
+    if (_resolvedBaseUrl != null) return _resolvedBaseUrl!;
+
+    if (kIsWeb) {
+      _resolvedBaseUrl = 'http://127.0.0.1:8000/api/v1';
+      return _resolvedBaseUrl!;
     }
-    // iOS simulator + macOS desktop
-    return 'http://localhost:8000/api/v1';
+
+    final List<String> candidates = [];
+
+    // 1. Cloud backend (always reachable)
+    candidates.add('https://ai-pipeline-u7tf.onrender.com/api/v1');
+
+    // 2. Android Emulator loopback
+    if (Platform.isAndroid) {
+      candidates.add('http://10.0.2.2:8000/api/v1');
+    }
+    
+    // 3. iOS Simulator / macOS desktop localhost
+    candidates.add('http://127.0.0.1:8000/api/v1');
+    candidates.add('http://localhost:8000/api/v1');
+
+    // 4. Physical device LAN IP (if wifi is connected)
+    const hostIp = '10.3.8.131';
+    candidates.add('http://$hostIp:8000/api/v1');
+
+    for (final candidate in candidates) {
+      try {
+        final url = Uri.parse('$candidate/subjects');
+        final response = await http.get(url, headers: {'Accept': 'application/json'}).timeout(const Duration(milliseconds: 1500));
+        if (response.statusCode == 200) {
+          _resolvedBaseUrl = candidate;
+          debugPrint('ApiService: Dynamic URL selected: $_resolvedBaseUrl');
+          return _resolvedBaseUrl!;
+        }
+      } catch (e) {
+        debugPrint('ApiService: Try candidate $candidate failed: $e');
+      }
+    }
+
+    // Default fallback — cloud backend
+    _resolvedBaseUrl = 'https://ai-pipeline-u7tf.onrender.com/api/v1';
+    debugPrint('ApiService: Fallback to $_resolvedBaseUrl');
+    return _resolvedBaseUrl!;
+  }
+
+  /// Build headers that include the auth token when available.
+  static Map<String, String> _authHeaders({bool includeContentType = false}) {
+    final headers = <String, String>{'Accept': 'application/json'};
+    if (_authToken != null) {
+      headers['Authorization'] = 'Bearer $_authToken';
+    }
+    if (includeContentType) {
+      headers['Content-Type'] = 'application/json';
+    }
+    return headers;
+  }
+
+  /// Clear auth state and force re-resolve on next login.
+  static void logout() {
+    _authToken = null;
+    _resolvedBaseUrl = null;
+    currentUser = null;
+  }
+
+  /// Send a message (announcement) to the teacher.
+  static Future<Map<String, dynamic>> sendMessage({
+    required String title,
+    required String body,
+  }) async {
+    final url = Uri.parse('$baseUrl/announcements');
+    final response = await http.post(
+      url,
+      headers: _authHeaders(includeContentType: true),
+      body: jsonEncode({
+        'title': title,
+        'body': body,
+        'priority': 'Normal',
+        'target_grades': [],
+        'target_sections': [],
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Nachricht konnte nicht gesendet werden');
+    }
+  }
+
+  /// Log in with email and password. Stores the JWT token for future requests.
+  static Future<Map<String, dynamic>> login(String email, String password) async {
+    final url = Uri.parse('$baseUrl/auth/login');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({'email': email, 'password': password}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      _authToken = data['token'] as String?;
+      currentUser = data['user'] as Map<String, dynamic>?;
+      return data;
+    } else {
+      final body = jsonDecode(response.body);
+      final message = body['detail'] ?? body['message'] ?? 'Login fehlgeschlagen';
+      throw Exception(message);
+    }
+  }
+
+  /// Register a new account. Stores the JWT token for future requests.
+  static Future<Map<String, dynamic>> register(
+    String email,
+    String password,
+    String name, {
+    String? grade,
+    String? section,
+  }) async {
+    final url = Uri.parse('$baseUrl/auth/register');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'name': name,
+        'role': 'student',
+        'grade': grade,
+        'section': section,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      _authToken = data['token'] as String?;
+      currentUser = data['user'] as Map<String, dynamic>?;
+      return data;
+    } else {
+      final body = jsonDecode(response.body);
+      final message = body['detail'] ?? body['message'] ?? 'Registrierung fehlgeschlagen';
+      throw Exception(message);
+    }
   }
 
   /// Fetch all published quizzes from the teacher backend.
   static Future<List<Map<String, dynamic>>> fetchQuizzes() async {
-    final url = Uri.parse('$baseUrl/quizzes');
-    final response = await http.get(url, headers: {'Accept': 'application/json'});
+    final grade = currentUser?['grade'] as String?;
+    final section = currentUser?['section'] as String?;
+
+    final Map<String, String> params = {};
+    if (grade != null) params['grade'] = grade;
+    if (section != null) params['section'] = section;
+
+    final uri = Uri.parse('$baseUrl/quizzes').replace(queryParameters: params);
+    final response = await http.get(uri, headers: _authHeaders());
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -28,7 +186,7 @@ class ApiService {
   /// Fetch all subjects and level trees from the teacher backend.
   static Future<List<Map<String, dynamic>>> fetchSubjects() async {
     final url = Uri.parse('$baseUrl/subjects');
-    final response = await http.get(url, headers: {'Accept': 'application/json'});
+    final response = await http.get(url, headers: _authHeaders());
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -48,10 +206,7 @@ class ApiService {
     final url = Uri.parse('$baseUrl/quiz-results');
     final response = await http.post(
       url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: _authHeaders(includeContentType: true),
       body: jsonEncode({
         'quiz_id': quizId,
         'student_name': studentName,
@@ -63,6 +218,19 @@ class ApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to submit result: ${response.statusCode}');
+    }
+  }
+
+  /// Fetch all announcements sent by the teacher.
+  static Future<List<Map<String, dynamic>>> fetchAnnouncements() async {
+    final url = Uri.parse('$baseUrl/announcements');
+    final response = await http.get(url, headers: _authHeaders());
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to fetch announcements: ${response.statusCode}');
     }
   }
 }

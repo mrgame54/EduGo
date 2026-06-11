@@ -6,6 +6,8 @@ import '../widgets/streak_flame.dart';
 import '../widgets/robot_avatar.dart';
 import '../services/api_service.dart';
 import 'quiz_screen.dart';
+import 'inbox_screen.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -234,11 +236,127 @@ class _Header extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          _HeaderIconBtn(icon: Icons.chat_bubble_outline_rounded),
+          _HeaderIconBtn(
+            icon: Icons.chat_bubble_outline_rounded,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const InboxScreen()));
+            },
+          ),
           const SizedBox(width: 6),
           _HeaderIconBtn(icon: Icons.calendar_today_rounded),
           const SizedBox(width: 6),
-          _HeaderIconBtn(icon: Icons.person_rounded),
+          _HeaderIconBtn(
+            icon: Icons.person_rounded,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.transparent,
+                builder: (ctx) => Container(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Drag handle
+                      Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      // Avatar
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF3DD6F5), Color(0xFF1CB0F6)],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Center(
+                          child: Text('👨‍🎓', style: TextStyle(fontSize: 30)),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        ApiService.currentUser?['name'] ?? 'Schüler Profil',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF2C2C2C),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        ApiService.currentUser?['email'] ?? 'student@edugo.com',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[500],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F8FF),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFB3E5FC), width: 1),
+                        ),
+                        child: Text(
+                          'Klasse: ${ApiService.currentUser?['grade'] ?? '-'} · ${ApiService.currentUser?['section'] ?? '-'}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF0288D1),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      // Logout button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            HapticFeedback.mediumImpact();
+                            ApiService.logout();
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (_) => const LoginScreen()),
+                              (route) => false,
+                            );
+                          },
+                          icon: const Icon(Icons.logout_rounded, size: 20),
+                          label: const Text(
+                            'Abmelden',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF4B4B),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -247,18 +365,22 @@ class _Header extends StatelessWidget {
 
 class _HeaderIconBtn extends StatelessWidget {
   final IconData icon;
-  const _HeaderIconBtn({required this.icon});
+  final VoidCallback? onTap;
+  const _HeaderIconBtn({required this.icon, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FF),
-        borderRadius: BorderRadius.circular(11),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F7FF),
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Icon(icon, color: const Color(0xFFB8BDD8), size: 20),
       ),
-      child: Icon(icon, color: const Color(0xFFB8BDD8), size: 20),
     );
   }
 }

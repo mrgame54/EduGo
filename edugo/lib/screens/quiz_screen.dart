@@ -94,7 +94,7 @@ class _QuizScreenState extends State<QuizScreen> {
     try {
       await ApiService.submitResult(
         quizId: widget.quizId!,
-        studentName: 'Lernstar', // TODO: replace with real student name
+        studentName: ApiService.currentUser?['name'] ?? 'Lernstar',
         answers: _answerLog,
       );
     } catch (e) {
