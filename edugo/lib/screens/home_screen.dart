@@ -28,8 +28,6 @@ class HomeScreen extends StatelessWidget {
                     _SectionLabel(label: 'Fächer wählen'),
                     const SizedBox(height: 16),
                     _SubjectGrid(),
-                    const SizedBox(height: 36),
-                    _ProgressFooter(),
                     const SizedBox(height: 28),
                   ],
                 ),
@@ -223,6 +221,8 @@ class _DailyStreakBanner extends StatelessWidget {
         child: Row(
           children: [
             const AnimatedStreakFlame(streakCount: 67, compact: true),
+            const SizedBox(width: 8),
+            const RobotAvatar(scale: 0.36),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,56 +324,3 @@ class _SubjectGrid extends StatelessWidget {
   }
 }
 
-// ─── PROGRESS FOOTER ──────────────────────────────────────────────────────────
-
-class _ProgressFooter extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Section divider
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 22),
-          child: Row(
-            children: [
-              Expanded(child: Container(height: 1.5, color: const Color(0xFFEEEEEE))),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  'Dein Fortschritt',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.grey[400],
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-              Expanded(child: Container(height: 1.5, color: const Color(0xFFEEEEEE))),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        const RobotAvatar(),
-        const SizedBox(height: 6),
-        Text(
-          'Ich bin Edu! 🤖',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            color: Colors.grey[400],
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Dein Lernbegleiter',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[300],
-          ),
-        ),
-      ],
-    );
-  }
-}
