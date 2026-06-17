@@ -492,6 +492,8 @@ class _DailyStreakBanner extends StatelessWidget {
         child: Row(
           children: [
             const AnimatedStreakFlame(streakCount: 67, compact: true),
+            const SizedBox(width: 8),
+            const RobotAvatar(scale: 0.36),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -782,4 +784,3 @@ class _TeacherQuizList extends StatelessWidget {
     );
   }
 }
-

@@ -131,22 +131,6 @@ class _QuizScreenState extends State<QuizScreen> {
                       color: widget.subjectColor,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  const Row(
-                    children: [
-                      Icon(Icons.favorite_rounded,
-                          color: Color(0xFFFF4B4B), size: 28),
-                      SizedBox(width: 4),
-                      Text(
-                        '5',
-                        style: TextStyle(
-                          color: Color(0xFFFF4B4B),
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),

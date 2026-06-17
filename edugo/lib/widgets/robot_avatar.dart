@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 
 class RobotAvatar extends StatefulWidget {
-  const RobotAvatar({super.key});
+  /// Scales the whole avatar (antennas, body, face) proportionally.
+  /// 1.0 = original full size.
+  final double scale;
+
+  const RobotAvatar({super.key, this.scale = 1.0});
 
   @override
   State<RobotAvatar> createState() => _RobotAvatarState();
@@ -42,22 +46,25 @@ class _RobotAvatarState extends State<RobotAvatar>
     super.dispose();
   }
 
+  // Scales a raw design-size value by the widget's scale factor.
+  double _s(double value) => value * widget.scale;
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _blinkController,
       builder: (context, child) {
         return Container(
-          width: 100,
-          height: 90,
+          width: _s(100),
+          height: _s(90),
           decoration: BoxDecoration(
             color: const Color(0xFFD8D8DE),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0xFFA8A8B0), width: 3.5),
-            boxShadow: const [
+            borderRadius: BorderRadius.circular(_s(28)),
+            border: Border.all(color: const Color(0xFFA8A8B0), width: _s(3.5)),
+            boxShadow: [
               BoxShadow(
-                color: Color(0xFFA8A8B0),
-                offset: Offset(0, 5),
+                color: const Color(0xFFA8A8B0),
+                offset: Offset(0, _s(5)),
                 blurRadius: 0,
                 spreadRadius: 0,
               ),
@@ -68,43 +75,43 @@ class _RobotAvatarState extends State<RobotAvatar>
             children: [
               // Left antenna
               Positioned(
-                top: -22,
-                left: 16,
+                top: _s(-22),
+                left: _s(16),
                 child: Transform.rotate(
                   angle: -0.26,
                   child: Container(
-                    width: 8,
-                    height: 26,
+                    width: _s(8),
+                    height: _s(26),
                     decoration: BoxDecoration(
                       color: const Color(0xFFA8A8B0),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(_s(4)),
                     ),
                   ),
                 ),
               ),
               // Right antenna
               Positioned(
-                top: -22,
-                right: 16,
+                top: _s(-22),
+                right: _s(16),
                 child: Transform.rotate(
                   angle: 0.26,
                   child: Container(
-                    width: 8,
-                    height: 26,
+                    width: _s(8),
+                    height: _s(26),
                     decoration: BoxDecoration(
                       color: const Color(0xFFA8A8B0),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(_s(4)),
                     ),
                   ),
                 ),
               ),
               // Left antenna tip
               Positioned(
-                top: -34,
-                left: 11,
+                top: _s(-34),
+                left: _s(11),
                 child: Container(
-                  width: 14,
-                  height: 14,
+                  width: _s(14),
+                  height: _s(14),
                   decoration: const BoxDecoration(
                     color: Color(0xFFA8A8B0),
                     shape: BoxShape.circle,
@@ -113,11 +120,11 @@ class _RobotAvatarState extends State<RobotAvatar>
               ),
               // Right antenna tip
               Positioned(
-                top: -34,
-                right: 11,
+                top: _s(-34),
+                right: _s(11),
                 child: Container(
-                  width: 14,
-                  height: 14,
+                  width: _s(14),
+                  height: _s(14),
                   decoration: const BoxDecoration(
                     color: Color(0xFFA8A8B0),
                     shape: BoxShape.circle,
@@ -129,31 +136,31 @@ class _RobotAvatarState extends State<RobotAvatar>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SizedBox(height: 10),
+                    SizedBox(height: _s(10)),
                     // Eyes
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _buildEye(),
-                        const SizedBox(width: 16),
+                        SizedBox(width: _s(16)),
                         _buildEye(),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: _s(8)),
                     // Mouth
                     Container(
-                      width: 32,
-                      height: 14,
+                      width: _s(32),
+                      height: _s(14),
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
                             color: const Color(0xFFA8A8B0),
-                            width: 3,
+                            width: _s(3),
                           ),
                         ),
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(20),
-                          bottomRight: Radius.circular(20),
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(_s(20)),
+                          bottomRight: Radius.circular(_s(20)),
                         ),
                       ),
                     ),
@@ -171,18 +178,18 @@ class _RobotAvatarState extends State<RobotAvatar>
     return Transform.scale(
       scaleY: _blinkAnimation.value,
       child: Container(
-        width: 18,
-        height: 13,
+        width: _s(18),
+        height: _s(13),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFA8A8B0), width: 2.5),
+          borderRadius: BorderRadius.circular(_s(10)),
+          border: Border.all(color: const Color(0xFFA8A8B0), width: _s(2.5)),
         ),
         child: Center(
           child: Container(
-            width: 6,
-            height: 6,
-            margin: const EdgeInsets.only(left: 2),
+            width: _s(6),
+            height: _s(6),
+            margin: EdgeInsets.only(left: _s(2)),
             decoration: const BoxDecoration(
               color: Color(0xFF3C3C3C),
               shape: BoxShape.circle,
