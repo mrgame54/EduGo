@@ -15,6 +15,7 @@ class _LoginScreenState extends State<LoginScreen>
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   bool _isLoading = false;
+  String _loadingStatus = '';
   bool _obscurePassword = true;
   bool _isSignup = false;
 
@@ -83,11 +84,22 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _loadingStatus = 'Verbindung wird hergestellt …';
+    });
 
     try {
-      // Resolve the backend URL first
-      await ApiService.resolveBaseUrl();
+      // Resolve the backend URL first — may take a few seconds if waking up cloud server
+      final resolvedUrl = await ApiService.resolveBaseUrl();
+
+      if (mounted) {
+        setState(() {
+          _loadingStatus = resolvedUrl.contains('onrender.com')
+              ? 'Server wird gestartet … (bitte warten)'
+              : 'Verbunden ✓';
+        });
+      }
 
       if (_isSignup) {
         await ApiService.register(
@@ -118,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return;
       _showError(e.toString().replaceFirst('Exception: ', ''));
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() { _isLoading = false; _loadingStatus = ''; });
     }
   }
 
@@ -400,6 +412,19 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                       ),
                     ),
+                    if (_isLoading && _loadingStatus.isNotEmpty) ...
+                      [
+                        const SizedBox(height: 12),
+                        Text(
+                          _loadingStatus,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[500],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     const SizedBox(height: 24),
                     // ─── TOGGLE LOGIN/SIGNUP ───
                     Row(

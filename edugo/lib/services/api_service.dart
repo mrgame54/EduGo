@@ -20,35 +20,35 @@ class ApiService {
       return _resolvedBaseUrl!;
     }
 
-    final List<String> candidates = [];
-
-    // 1. Cloud backend (always reachable)
-    candidates.add('https://ai-pipeline-u7tf.onrender.com/api/v1');
-
-    // 2. Android Emulator loopback
-    if (Platform.isAndroid) {
-      candidates.add('http://10.0.2.2:8000/api/v1');
-    }
-    
-    // 3. iOS Simulator / macOS desktop localhost
-    candidates.add('http://127.0.0.1:8000/api/v1');
-    candidates.add('http://localhost:8000/api/v1');
-
-    // 4. Physical device LAN IP (if wifi is connected)
-    const hostIp = '10.3.8.131';
-    candidates.add('http://$hostIp:8000/api/v1');
+    // Try fast local candidates first (instant on same network)
+    final List<Map<String, dynamic>> candidates = [
+      // Android Emulator loopback
+      if (Platform.isAndroid)
+        {'url': 'http://10.0.2.2:8000/api/v1', 'timeout': 1000},
+      // iOS Simulator / macOS desktop localhost
+      {'url': 'http://127.0.0.1:8000/api/v1', 'timeout': 1000},
+      {'url': 'http://localhost:8000/api/v1', 'timeout': 1000},
+      // Physical device LAN IP — developer's machine on same WiFi
+      {'url': 'http://10.3.8.131:8000/api/v1', 'timeout': 1500},
+      // Cloud backend — last resort (Render free tier may have cold start delay)
+      {'url': 'https://ai-pipeline-u7tf.onrender.com/api/v1', 'timeout': 12000},
+    ];
 
     for (final candidate in candidates) {
+      final urlStr = candidate['url'] as String;
+      final timeoutMs = candidate['timeout'] as int;
       try {
-        final url = Uri.parse('$candidate/subjects');
-        final response = await http.get(url, headers: {'Accept': 'application/json'}).timeout(const Duration(milliseconds: 1500));
+        final url = Uri.parse('$urlStr/subjects');
+        final response = await http
+            .get(url, headers: {'Accept': 'application/json'})
+            .timeout(Duration(milliseconds: timeoutMs));
         if (response.statusCode == 200) {
-          _resolvedBaseUrl = candidate;
+          _resolvedBaseUrl = urlStr;
           debugPrint('ApiService: Dynamic URL selected: $_resolvedBaseUrl');
           return _resolvedBaseUrl!;
         }
       } catch (e) {
-        debugPrint('ApiService: Try candidate $candidate failed: $e');
+        debugPrint('ApiService: Try candidate $urlStr failed: $e');
       }
     }
 
