@@ -90,14 +90,14 @@ class _LoginScreenState extends State<LoginScreen>
     });
 
     try {
-      // Resolve the backend URL first — may take a few seconds if waking up cloud server
+      // Resolve the backend URL first
       final resolvedUrl = await ApiService.resolveBaseUrl();
 
       if (mounted) {
         setState(() {
           _loadingStatus = resolvedUrl.contains('onrender.com')
-              ? 'Server wird gestartet … (bitte warten)'
-              : 'Verbunden ✓';
+              ? 'Mit Server verbunden ✓'
+              : 'Lokaler Server verbunden ✓';
         });
       }
 

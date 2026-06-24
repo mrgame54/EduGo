@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -12,49 +11,38 @@ class ApiService {
     return _resolvedBaseUrl ?? 'https://ai-pipeline-u7tf.onrender.com/api/v1';
   }
 
+  // The deployed Render backend — used by default on all devices
+  static const String _cloudBaseUrl =
+      'https://ai-pipeline-u7tf.onrender.com/api/v1';
+
+  // Set this to your local machine IP while developing locally,
+  // then set back to null before committing.
+  static const String? _devLocalUrl = null;
+  // Example: static const String? _devLocalUrl = 'http://10.3.8.131:8000/api/v1';
+
   static Future<String> resolveBaseUrl() async {
     if (_resolvedBaseUrl != null) return _resolvedBaseUrl!;
 
-    if (kIsWeb) {
-      _resolvedBaseUrl = 'http://127.0.0.1:8000/api/v1';
-      return _resolvedBaseUrl!;
-    }
-
-    // Try fast local candidates first (instant on same network)
-    final List<Map<String, dynamic>> candidates = [
-      // Android Emulator loopback
-      if (Platform.isAndroid)
-        {'url': 'http://10.0.2.2:8000/api/v1', 'timeout': 1000},
-      // iOS Simulator / macOS desktop localhost
-      {'url': 'http://127.0.0.1:8000/api/v1', 'timeout': 1000},
-      {'url': 'http://localhost:8000/api/v1', 'timeout': 1000},
-      // Physical device LAN IP — developer's machine on same WiFi
-      {'url': 'http://10.3.8.131:8000/api/v1', 'timeout': 1500},
-      // Cloud backend — last resort (Render free tier may have cold start delay)
-      {'url': 'https://ai-pipeline-u7tf.onrender.com/api/v1', 'timeout': 12000},
-    ];
-
-    for (final candidate in candidates) {
-      final urlStr = candidate['url'] as String;
-      final timeoutMs = candidate['timeout'] as int;
+    // In debug mode, prefer local server if _devLocalUrl is set
+    if (kDebugMode && _devLocalUrl != null) {
       try {
-        final url = Uri.parse('$urlStr/subjects');
         final response = await http
-            .get(url, headers: {'Accept': 'application/json'})
-            .timeout(Duration(milliseconds: timeoutMs));
+            .get(Uri.parse('$_devLocalUrl/subjects'),
+                headers: {'Accept': 'application/json'})
+            .timeout(const Duration(seconds: 2));
         if (response.statusCode == 200) {
-          _resolvedBaseUrl = urlStr;
-          debugPrint('ApiService: Dynamic URL selected: $_resolvedBaseUrl');
+          _resolvedBaseUrl = _devLocalUrl;
+          debugPrint('ApiService: Using local dev server: $_resolvedBaseUrl');
           return _resolvedBaseUrl!;
         }
-      } catch (e) {
-        debugPrint('ApiService: Try candidate $urlStr failed: $e');
+      } catch (_) {
+        debugPrint('ApiService: Local dev server unreachable, falling back to cloud.');
       }
     }
 
-    // Default fallback — cloud backend
-    _resolvedBaseUrl = 'https://ai-pipeline-u7tf.onrender.com/api/v1';
-    debugPrint('ApiService: Fallback to $_resolvedBaseUrl');
+    // Always use the cloud backend for production / other devices
+    _resolvedBaseUrl = _cloudBaseUrl;
+    debugPrint('ApiService: Using cloud backend: $_resolvedBaseUrl');
     return _resolvedBaseUrl!;
   }
 
