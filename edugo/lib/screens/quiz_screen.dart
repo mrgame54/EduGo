@@ -491,7 +491,7 @@ class _BottomActionArea extends StatelessWidget {
             color: btnColor,
             shadowColor: shadowColor,
             textColor: textColor,
-            onTap: (!isChecked && !hasSelection) ? null : onTap,
+            onTap: (isFinished || isChecked || hasSelection) ? onTap : null,
           ),
         ],
       ),
