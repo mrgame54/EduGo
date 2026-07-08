@@ -19,12 +19,6 @@ class _LoginScreenState extends State<LoginScreen>
   bool _obscurePassword = true;
   bool _isSignup = false;
 
-  String? _selectedGrade;
-  String? _selectedSection;
-
-  final List<String> _grades = ['Grade 6', 'Grade 7', 'Grade 8', 'Grade 9'];
-  final List<String> _sections = ['Section A', 'Section B', 'Section C'];
-
   late final AnimationController _animController;
   late final Animation<double> _fadeAnim;
   late final Animation<Offset> _slideAnim;
@@ -74,10 +68,6 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
 
-    if (_isSignup && (_selectedGrade == null || _selectedSection == null)) {
-      _showError('Bitte wähle eine Klasse und Parallelklasse aus.');
-      return;
-    }
 
     if (_isSignup && password.length < 6) {
       _showError('Passwort muss mindestens 6 Zeichen haben.');
@@ -106,8 +96,8 @@ class _LoginScreenState extends State<LoginScreen>
           email,
           password,
           name,
-          grade: _selectedGrade,
-          section: _selectedSection,
+          grade: 'Klasse 3',
+          section: 'A',
         );
       } else {
         await ApiService.login(email, password);
@@ -223,106 +213,6 @@ class _LoginScreenState extends State<LoginScreen>
                                   hint: 'Name',
                                   icon: Icons.person_outline_rounded,
                                   textInputAction: TextInputAction.next,
-                                ),
-                                const SizedBox(height: 16),
-                                // Dropdown for Grade
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: const Color(0xFFE8EAF0), width: 1.5),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.03),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: DropdownButtonFormField<String>(
-                                    value: _selectedGrade,
-                                    decoration: const InputDecoration(
-                                      border: InputBorder.none,
-                                      prefixIcon: Icon(Icons.school_outlined, color: Color(0xFF1CB0F6), size: 22),
-                                      prefixIconConstraints: BoxConstraints(minWidth: 40),
-                                    ),
-                                    hint: const Text(
-                                      'Klassenstufe (Grade)',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFFB0B0B0),
-                                      ),
-                                    ),
-                                    items: _grades.map((grade) {
-                                      return DropdownMenuItem(
-                                        value: grade,
-                                        child: Text(grade),
-                                      );
-                                    }).toList(),
-                                    onChanged: (val) {
-                                      setState(() {
-                                        _selectedGrade = val;
-                                      });
-                                    },
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF2C2C2C),
-                                    ),
-                                    icon: const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF1CB0F6), size: 28),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                // Dropdown for Section
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: const Color(0xFFE8EAF0), width: 1.5),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.03),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: DropdownButtonFormField<String>(
-                                    value: _selectedSection,
-                                    decoration: const InputDecoration(
-                                      border: InputBorder.none,
-                                      prefixIcon: Icon(Icons.class_outlined, color: Color(0xFF1CB0F6), size: 22),
-                                      prefixIconConstraints: BoxConstraints(minWidth: 40),
-                                    ),
-                                    hint: const Text(
-                                      'Parallelklasse (Section)',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFFB0B0B0),
-                                      ),
-                                    ),
-                                    items: _sections.map((sec) {
-                                      return DropdownMenuItem(
-                                        value: sec,
-                                        child: Text(sec),
-                                      );
-                                    }).toList(),
-                                    onChanged: (val) {
-                                      setState(() {
-                                        _selectedSection = val;
-                                      });
-                                    },
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF2C2C2C),
-                                    ),
-                                    icon: const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF1CB0F6), size: 28),
-                                  ),
                                 ),
                                 const SizedBox(height: 16),
                               ],
