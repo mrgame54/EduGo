@@ -39,3 +39,7 @@ To run the Flutter app locally:
 3. Run the project:
    ```bash
     flutter run
+
+--- 🍿 Video Preview
+https://github.com/user-attachments/assets/bccc74a8-f200-46ce-b46c-d4ce24d81ecb
+
