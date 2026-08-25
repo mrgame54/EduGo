@@ -29,8 +29,8 @@ To run the Flutter app locally:
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/your-username/edugo-student-app.git](https://github.com/your-username/edugo-student-app.git)
-   cd edugo-student-app
+   git clone https://github.com/mrgame54/EduGo.git
+   cd EduGo
 
 2. ** Install dependencies: **
    ```bash
