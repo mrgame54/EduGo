@@ -40,6 +40,9 @@ To run the Flutter app locally:
    ```bash
     flutter run
 
---- 🍿 Video Preview
-https://github.com/user-attachments/assets/bccc74a8-f200-46ce-b46c-d4ce24d81ecb
+--- 
+### 🍿 Video Preview
+<video src="https://github.com/user-attachments/assets/bccc74a8-f200-46ce-b46c-d4ce24d81ecb" controls="controls" muted="muted" style="max-width: 100%;">
+</video>
+
 
